@@ -14,24 +14,6 @@ const agentConfig = {
     subtextClass: 'text-blue-700 dark:text-blue-300',
     buttonClass: 'bg-blue-600 hover:bg-blue-700',
   },
-  cursor: {
-    name: 'Cursor',
-    description: 'Cursor AI-powered code editor',
-    bgClass: 'bg-purple-50 dark:bg-purple-900/20',
-    borderClass: 'border-purple-200 dark:border-purple-800',
-    textClass: 'text-purple-900 dark:text-purple-100',
-    subtextClass: 'text-purple-700 dark:text-purple-300',
-    buttonClass: 'bg-purple-600 hover:bg-purple-700',
-  },
-  codex: {
-    name: 'Codex',
-    description: 'OpenAI Codex AI assistant',
-    bgClass: 'bg-gray-100 dark:bg-gray-800/50',
-    borderClass: 'border-gray-300 dark:border-gray-600',
-    textClass: 'text-gray-900 dark:text-gray-100',
-    subtextClass: 'text-gray-700 dark:text-gray-300',
-    buttonClass: 'bg-gray-800 hover:bg-gray-900 dark:bg-gray-700 dark:hover:bg-gray-600',
-  },
 };
 
 export default function AccountContent({ agent, authStatus, onLogin }) {

@@ -1,12 +1,7 @@
 import React from 'react';
-import { MessageSquare, Folder, Terminal, GitBranch, ClipboardCheck } from 'lucide-react';
-import { useTasksSettings } from '../contexts/TasksSettingsContext';
-import { useTaskMaster } from '../contexts/TaskMasterContext';
+import { MessageSquare, Folder, Terminal, GitBranch } from 'lucide-react';
 
 function MobileNav({ activeTab, setActiveTab, isInputFocused }) {
-  const { tasksEnabled, isTaskMasterInstalled } = useTasksSettings();
-  const shouldShowTasksTab = Boolean(tasksEnabled && isTaskMasterInstalled);
-
   const navItems = [
     {
       id: 'chat',
@@ -32,12 +27,6 @@ function MobileNav({ activeTab, setActiveTab, isInputFocused }) {
       label: 'Git',
       onClick: () => setActiveTab('git')
     },
-    ...(shouldShowTasksTab ? [{
-      id: 'tasks',
-      icon: ClipboardCheck,
-      label: 'Tasks',
-      onClick: () => setActiveTab('tasks')
-    }] : [])
   ];
 
   return (

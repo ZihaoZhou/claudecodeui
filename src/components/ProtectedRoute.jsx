@@ -2,7 +2,6 @@ import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import SetupForm from './SetupForm';
 import LoginForm from './LoginForm';
-import Onboarding from './Onboarding';
 import { MessageSquare } from 'lucide-react';
 import { IS_PLATFORM } from '../constants/config';
 
@@ -26,34 +25,20 @@ const LoadingScreen = () => (
 );
 
 const ProtectedRoute = ({ children }) => {
-  const { user, isLoading, needsSetup, hasCompletedOnboarding, refreshOnboardingStatus } = useAuth();
-
-  if (IS_PLATFORM) {
-    if (isLoading) {
-      return <LoadingScreen />;
-    }
-
-    if (!hasCompletedOnboarding) {
-      return <Onboarding onComplete={refreshOnboardingStatus} />;
-    }
-
-    return children;
-  }
+  const { user, isLoading, needsSetup } = useAuth();
 
   if (isLoading) {
     return <LoadingScreen />;
   }
 
-  if (needsSetup) {
-    return <SetupForm />;
-  }
+  if (!IS_PLATFORM) {
+    if (needsSetup) {
+      return <SetupForm />;
+    }
 
-  if (!user) {
-    return <LoginForm />;
-  }
-
-  if (!hasCompletedOnboarding) {
-    return <Onboarding onComplete={refreshOnboardingStatus} />;
+    if (!user) {
+      return <LoginForm />;
+    }
   }
 
   return children;

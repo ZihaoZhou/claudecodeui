@@ -511,7 +511,7 @@ function GitPanel({ selectedProject, isMobile, onFileOpen }) {
         body: JSON.stringify({
           project: selectedProject.name,
           files: Array.from(selectedFiles),
-          provider: provider // Pass the current provider (claude or cursor)
+          provider: provider // Pass the current provider
         })
       });
 

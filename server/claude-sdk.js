@@ -14,13 +14,66 @@
 
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import crypto from 'crypto';
-import { promises as fs } from 'fs';
+import { promises as fs, statSync } from 'fs';
+import { execSync } from 'child_process';
 import path from 'path';
 import os from 'os';
 import { CLAUDE_MODELS } from '../shared/modelConstants.js';
 
 const activeSessions = new Map();
 const pendingToolApprovals = new Map();
+
+
+/**
+ * Resolve the path to the user's local Claude CLI binary.
+ * Priority: CLAUDE_CLI_PATH env var > common install locations > PATH lookup.
+ * Supports macOS, Linux, and Windows.
+ */
+function findClaudeBinary() {
+  if (process.env.CLAUDE_CLI_PATH) {
+    return process.env.CLAUDE_CLI_PATH;
+  }
+
+  const home = os.homedir();
+  const isWindows = os.platform() === 'win32';
+
+  let candidates;
+  if (isWindows) {
+    candidates = [
+      path.join(home, 'AppData', 'Local', 'bin', 'claude.exe'),
+      path.join(home, '.claude', 'local', 'claude.exe'),
+      path.join(home, 'AppData', 'Local', 'Programs', 'claude', 'claude.exe'),
+      path.join(home, 'AppData', 'Local', 'Microsoft', 'WinGet', 'Packages', 'claude', 'claude.exe'),
+      path.join(home, '.local', 'bin', 'claude.exe'),
+      'C:\\Program Files\\Claude\\claude.exe',
+      'C:\\Program Files (x86)\\Claude\\claude.exe',
+    ];
+  } else {
+    candidates = [
+      path.join(home, '.local', 'bin', 'claude'),
+      path.join(home, '.claude', 'local', 'claude'),
+      '/usr/local/bin/claude',
+    ];
+  }
+
+  for (const p of candidates) {
+    try {
+      const stat = statSync(p);
+      if (stat.isFile() || stat.isSymbolicLink()) return p;
+    } catch { /* not found, continue */ }
+  }
+
+  // Fallback: ask the shell (`where` on Windows, `which` on Unix)
+  try {
+    const lookupCmd = isWindows ? 'where claude' : 'which claude';
+    const resolved = execSync(lookupCmd, { encoding: 'utf8', timeout: 3000 }).trim();
+    // `where` on Windows may return multiple lines; use the first result
+    const firstLine = resolved.split(/\r?\n/)[0];
+    if (firstLine) return firstLine;
+  } catch { /* not found */ }
+
+  return undefined;
+}
 
 const TOOL_APPROVAL_TIMEOUT_MS = parseInt(process.env.CLAUDE_TOOL_APPROVAL_TIMEOUT_MS, 10) || 55000;
 
@@ -193,6 +246,13 @@ function mapCliOptionsToSDK(options = {}) {
   // Map setting sources for CLAUDE.md loading
   // This loads CLAUDE.md from project, user (~/.config/claude/CLAUDE.md), and local directories
   sdkOptions.settingSources = ['project', 'user', 'local'];
+
+  // Use the user's locally installed Claude binary instead of the SDK's bundled one.
+  // This ensures the user's auth credentials (OAuth or API key) are available.
+  const claudePath = findClaudeBinary();
+  if (claudePath) {
+    sdkOptions.pathToClaudeCodeExecutable = claudePath;
+  }
 
   // Map resume session
   if (sessionId) {

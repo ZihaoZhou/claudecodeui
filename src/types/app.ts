@@ -1,6 +1,6 @@
-export type SessionProvider = 'claude' | 'cursor' | 'codex';
+export type SessionProvider = 'claude';
 
-export type AppTab = 'chat' | 'files' | 'shell' | 'git' | 'tasks' | 'preview';
+export type AppTab = 'chat' | 'files' | 'shell' | 'git' | 'preview';
 
 export interface ProjectSession {
   id: string;
@@ -23,23 +23,13 @@ export interface ProjectSessionMeta {
   [key: string]: unknown;
 }
 
-export interface ProjectTaskmasterInfo {
-  hasTaskmaster?: boolean;
-  status?: string;
-  metadata?: Record<string, unknown>;
-  [key: string]: unknown;
-}
-
 export interface Project {
   name: string;
   displayName: string;
   fullPath: string;
   path?: string;
   sessions?: ProjectSession[];
-  cursorSessions?: ProjectSession[];
-  codexSessions?: ProjectSession[];
   sessionMeta?: ProjectSessionMeta;
-  taskmaster?: ProjectTaskmasterInfo;
   [key: string]: unknown;
 }
 

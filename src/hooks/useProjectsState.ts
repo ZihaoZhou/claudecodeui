@@ -23,7 +23,6 @@ const serialize = (value: unknown) => JSON.stringify(value ?? null);
 const projectsHaveChanges = (
   prevProjects: Project[],
   nextProjects: Project[],
-  includeExternalSessions: boolean,
 ): boolean => {
   if (prevProjects.length !== nextProjects.length) {
     return true;
@@ -35,34 +34,18 @@ const projectsHaveChanges = (
       return true;
     }
 
-    const baseChanged =
+    return (
       nextProject.name !== prevProject.name ||
       nextProject.displayName !== prevProject.displayName ||
       nextProject.fullPath !== prevProject.fullPath ||
       serialize(nextProject.sessionMeta) !== serialize(prevProject.sessionMeta) ||
-      serialize(nextProject.sessions) !== serialize(prevProject.sessions);
-
-    if (baseChanged) {
-      return true;
-    }
-
-    if (!includeExternalSessions) {
-      return false;
-    }
-
-    return (
-      serialize(nextProject.cursorSessions) !== serialize(prevProject.cursorSessions) ||
-      serialize(nextProject.codexSessions) !== serialize(prevProject.codexSessions)
+      serialize(nextProject.sessions) !== serialize(prevProject.sessions)
     );
   });
 };
 
 const getProjectSessions = (project: Project): ProjectSession[] => {
-  return [
-    ...(project.sessions ?? []),
-    ...(project.codexSessions ?? []),
-    ...(project.cursorSessions ?? []),
-  ];
+  return project.sessions ?? [];
 };
 
 const isUpdateAdditive = (
@@ -133,7 +116,7 @@ export function useProjectsState({
           return projectData;
         }
 
-        return projectsHaveChanges(prevProjects, projectData, true)
+        return projectsHaveChanges(prevProjects, projectData)
           ? projectData
           : prevProjects;
       });
@@ -285,42 +268,6 @@ export function useProjectsState({
         }
         return;
       }
-
-      const cursorSession = project.cursorSessions?.find((session) => session.id === sessionId);
-      if (cursorSession) {
-        const shouldUpdateProject = selectedProject?.name !== project.name;
-        const shouldUpdateSession =
-          selectedSession?.id !== sessionId || selectedSession.__provider !== 'cursor';
-
-        if (shouldUpdateProject) {
-          setSelectedProject(project);
-        }
-        if (shouldUpdateSession) {
-          setSelectedSession({ ...cursorSession, __provider: 'cursor' });
-        }
-        if (shouldSwitchTab) {
-          setActiveTab('chat');
-        }
-        return;
-      }
-
-      const codexSession = project.codexSessions?.find((session) => session.id === sessionId);
-      if (codexSession) {
-        const shouldUpdateProject = selectedProject?.name !== project.name;
-        const shouldUpdateSession =
-          selectedSession?.id !== sessionId || selectedSession.__provider !== 'codex';
-
-        if (shouldUpdateProject) {
-          setSelectedProject(project);
-        }
-        if (shouldUpdateSession) {
-          setSelectedSession({ ...codexSession, __provider: 'codex' });
-        }
-        if (shouldSwitchTab) {
-          setActiveTab('chat');
-        }
-        return;
-      }
     }
   }, [sessionId, projects, selectedProject?.name, selectedSession?.id, selectedSession?.__provider]);
 
@@ -343,11 +290,6 @@ export function useProjectsState({
 
       if (activeTab !== 'git' && activeTab !== 'preview') {
         setActiveTab('chat');
-      }
-
-      const provider = localStorage.getItem('selected-provider') || 'claude';
-      if (provider === 'cursor') {
-        sessionStorage.setItem('cursorSessionId', session.id);
       }
 
       if (isMobile) {
@@ -405,7 +347,7 @@ export function useProjectsState({
       const freshProjects = (await response.json()) as Project[];
 
       setProjects((prevProjects) =>
-        projectsHaveChanges(prevProjects, freshProjects, true) ? freshProjects : prevProjects,
+        projectsHaveChanges(prevProjects, freshProjects) ? freshProjects : prevProjects,
       );
 
       if (!selectedProject) {

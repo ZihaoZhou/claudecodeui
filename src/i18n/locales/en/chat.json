@@ -8,9 +8,7 @@
     "user": "U",
     "error": "Error",
     "tool": "Tool",
-    "claude": "Claude",
-    "cursor": "Cursor",
-    "codex": "Codex"
+    "claude": "Claude"
   },
   "tools": {
     "settings": "Tool Settings",
@@ -77,21 +75,11 @@
   "usageLimit": {
     "resetAt": "Claude usage limit reached. Your limit will reset at **{{time}} {{timezone}}** - {{date}}"
   },
-  "codex": {
-    "permissionMode": "Permission Mode",
-    "modes": {
-      "default": "Default Mode",
-      "acceptEdits": "Accept Edits",
-      "bypassPermissions": "Bypass Permissions",
-      "plan": "Plan Mode"
-    },
-    "descriptions": {
-      "default": "Only trusted commands (ls, cat, grep, git status, etc.) run automatically. Other commands are skipped. Can write to workspace.",
-      "acceptEdits": "All commands run automatically within the workspace. Full auto mode with sandboxed execution.",
-      "bypassPermissions": "Full system access with no restrictions. All commands run automatically with full disk and network access. Use with caution.",
-      "plan": "Planning mode - no commands are executed"
-    },
-    "technicalDetails": "Technical details"
+  "modes": {
+    "default": "Default Mode",
+    "acceptEdits": "Accept Edits",
+    "bypassPermissions": "Bypass Permissions",
+    "plan": "Plan Mode"
   },
   "input": {
     "placeholder": "Type / for commands, @ for files, or ask {{provider}} anything...",
@@ -151,15 +139,10 @@
     "description": "Select a provider to start a new conversation",
     "selectModel": "Select Model",
     "providerInfo": {
-      "anthropic": "by Anthropic",
-      "openai": "by OpenAI",
-      "cursorEditor": "AI Code Editor"
+      "anthropic": "by Anthropic"
     },
     "readyPrompt": {
-      "claude": "Ready to use Claude with {{model}}. Start typing your message below.",
-      "cursor": "Ready to use Cursor with {{model}}. Start typing your message below.",
-      "codex": "Ready to use Codex with {{model}}. Start typing your message below.",
-      "default": "Select a provider above to begin"
+      "claude": "Ready to use Claude with {{model}}. Start typing your message below."
     }
   },
   "session": {
@@ -210,8 +193,5 @@
   },
   "projectSelection": {
     "startChatWithProvider": "Select a project to start chatting with {{provider}}"
-  },
-  "tasks": {
-    "nextTaskPrompt": "Start the next task"
   }
 }

@@ -66,10 +66,10 @@ export default function ChatInputControls({
             }`}
           />
           <span>
-            {permissionMode === 'default' && t('codex.modes.default')}
-            {permissionMode === 'acceptEdits' && t('codex.modes.acceptEdits')}
-            {permissionMode === 'bypassPermissions' && t('codex.modes.bypassPermissions')}
-            {permissionMode === 'plan' && t('codex.modes.plan')}
+            {permissionMode === 'default' && t('modes.default')}
+            {permissionMode === 'acceptEdits' && t('modes.acceptEdits')}
+            {permissionMode === 'bypassPermissions' && t('modes.bypassPermissions')}
+            {permissionMode === 'plan' && t('modes.plan')}
           </span>
         </div>
       </button>

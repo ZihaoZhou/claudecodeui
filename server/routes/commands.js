@@ -4,7 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import os from 'os';
 import matter from 'gray-matter';
-import { CLAUDE_MODELS, CURSOR_MODELS, CODEX_MODELS } from '../../shared/modelConstants.js';
+import { CLAUDE_MODELS } from '../../shared/modelConstants.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -186,8 +186,6 @@ Custom commands can be created in:
     // Read available models from centralized constants
     const availableModels = {
       claude: CLAUDE_MODELS.OPTIONS.map(o => o.value),
-      cursor: CURSOR_MODELS.OPTIONS.map(o => o.value),
-      codex: CODEX_MODELS.OPTIONS.map(o => o.value)
     };
 
     const currentProvider = context?.provider || 'claude';
@@ -212,13 +210,7 @@ Custom commands can be created in:
   '/cost': async (args, context) => {
     const tokenUsage = context?.tokenUsage || {};
     const provider = context?.provider || 'claude';
-    const model =
-      context?.model ||
-      (provider === 'cursor'
-        ? CURSOR_MODELS.DEFAULT
-        : provider === 'codex'
-          ? CODEX_MODELS.DEFAULT
-          : CLAUDE_MODELS.DEFAULT);
+    const model = context?.model || CLAUDE_MODELS.DEFAULT;
 
     const used = Number(tokenUsage.used ?? tokenUsage.totalUsed ?? tokenUsage.total_tokens ?? 0) || 0;
     const total =
@@ -261,8 +253,6 @@ Custom commands can be created in:
     // Rough default rates by provider (USD / 1M tokens).
     const pricingByProvider = {
       claude: { input: 3, output: 15 },
-      cursor: { input: 3, output: 15 },
-      codex: { input: 1.5, output: 6 },
     };
     const rates = pricingByProvider[provider] || pricingByProvider.claude;
 

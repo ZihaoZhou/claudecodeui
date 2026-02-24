@@ -38,9 +38,7 @@ interface UseChatComposerStateArgs {
   provider: SessionProvider;
   permissionMode: PermissionMode | string;
   cyclePermissionMode: () => void;
-  cursorModel: string;
   claudeModel: string;
-  codexModel: string;
   isLoading: boolean;
   canAbortSession: boolean;
   tokenBudget: Record<string, unknown> | null;
@@ -89,9 +87,7 @@ export function useChatComposerState({
   provider,
   permissionMode,
   cyclePermissionMode,
-  cursorModel,
   claudeModel,
-  codexModel,
   isLoading,
   canAbortSession,
   tokenBudget,
@@ -155,7 +151,7 @@ export function useChatComposerState({
             ...previous,
             {
               type: 'assistant',
-              content: `**Current Model**: ${data.current.model}\n\n**Available Models**:\n\nClaude: ${data.available.claude.join(', ')}\n\nCursor: ${data.available.cursor.join(', ')}`,
+              content: `**Current Model**: ${data.current.model}\n\n**Available Models**: ${data.available.claude.join(', ')}`,
               timestamp: Date.now(),
             },
           ]);
@@ -287,7 +283,7 @@ export function useChatComposerState({
           projectName: selectedProject.name,
           sessionId: currentSessionId,
           provider,
-          model: provider === 'cursor' ? cursorModel : provider === 'codex' ? codexModel : claudeModel,
+          model: claudeModel,
           tokenUsage: tokenBudget,
         };
 
@@ -338,9 +334,7 @@ export function useChatComposerState({
     },
     [
       claudeModel,
-      codexModel,
       currentSessionId,
-      cursorModel,
       handleBuiltInCommand,
       handleCustomCommand,
       input,
@@ -558,7 +552,7 @@ export function useChatComposerState({
       setTimeout(() => scrollToBottom(), 100);
 
       const effectiveSessionId =
-        currentSessionId || selectedSession?.id || sessionStorage.getItem('cursorSessionId');
+        currentSessionId || selectedSession?.id;
       const sessionToActivate = effectiveSessionId || `new-session-${Date.now()}`;
 
       if (!effectiveSessionId && !selectedSession?.id) {
@@ -572,12 +566,7 @@ export function useChatComposerState({
 
       const getToolsSettings = () => {
         try {
-          const settingsKey =
-            provider === 'cursor'
-              ? 'cursor-tools-settings'
-              : provider === 'codex'
-              ? 'codex-settings'
-              : 'claude-settings';
+          const settingsKey = 'claude-settings';
           const savedSettings = safeLocalStorage.getItem(settingsKey);
           if (savedSettings) {
             return JSON.parse(savedSettings);
@@ -596,51 +585,20 @@ export function useChatComposerState({
       const toolsSettings = getToolsSettings();
       const resolvedProjectPath = selectedProject.fullPath || selectedProject.path || '';
 
-      if (provider === 'cursor') {
-        sendMessage({
-          type: 'cursor-command',
-          command: messageContent,
+      sendMessage({
+        type: 'claude-command',
+        command: messageContent,
+        options: {
+          projectPath: resolvedProjectPath,
+          cwd: resolvedProjectPath,
           sessionId: effectiveSessionId,
-          options: {
-            cwd: resolvedProjectPath,
-            projectPath: resolvedProjectPath,
-            sessionId: effectiveSessionId,
-            resume: Boolean(effectiveSessionId),
-            model: cursorModel,
-            skipPermissions: toolsSettings?.skipPermissions || false,
-            toolsSettings,
-          },
-        });
-      } else if (provider === 'codex') {
-        sendMessage({
-          type: 'codex-command',
-          command: messageContent,
-          sessionId: effectiveSessionId,
-          options: {
-            cwd: resolvedProjectPath,
-            projectPath: resolvedProjectPath,
-            sessionId: effectiveSessionId,
-            resume: Boolean(effectiveSessionId),
-            model: codexModel,
-            permissionMode: permissionMode === 'plan' ? 'default' : permissionMode,
-          },
-        });
-      } else {
-        sendMessage({
-          type: 'claude-command',
-          command: messageContent,
-          options: {
-            projectPath: resolvedProjectPath,
-            cwd: resolvedProjectPath,
-            sessionId: effectiveSessionId,
-            resume: Boolean(effectiveSessionId),
-            toolsSettings,
-            permissionMode,
-            model: claudeModel,
-            images: uploadedImages,
-          },
-        });
-      }
+          resume: Boolean(effectiveSessionId),
+          toolsSettings,
+          permissionMode,
+          model: claudeModel,
+          images: uploadedImages,
+        },
+      });
 
       setInput('');
       inputValueRef.current = '';
@@ -660,9 +618,7 @@ export function useChatComposerState({
     [
       attachedImages,
       claudeModel,
-      codexModel,
       currentSessionId,
-      cursorModel,
       executeCommand,
       isLoading,
       onSessionActive,
@@ -836,14 +792,11 @@ export function useChatComposerState({
 
     const pendingSessionId =
       typeof window !== 'undefined' ? sessionStorage.getItem('pendingSessionId') : null;
-    const cursorSessionId =
-      typeof window !== 'undefined' ? sessionStorage.getItem('cursorSessionId') : null;
 
     const candidateSessionIds = [
       currentSessionId,
       pendingViewSessionRef.current?.sessionId || null,
       pendingSessionId,
-      provider === 'cursor' ? cursorSessionId : null,
       selectedSession?.id || null,
     ];
 

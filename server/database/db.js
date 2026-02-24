@@ -86,11 +86,6 @@ const runMigrations = () => {
       db.exec('ALTER TABLE users ADD COLUMN git_email TEXT');
     }
 
-    if (!columnNames.includes('has_completed_onboarding')) {
-      console.log('Running migration: Adding has_completed_onboarding column');
-      db.exec('ALTER TABLE users ADD COLUMN has_completed_onboarding BOOLEAN DEFAULT 0');
-    }
-
     console.log('Database migrations completed successfully');
   } catch (error) {
     console.error('Error running migrations:', error.message);
@@ -190,23 +185,6 @@ const userDb = {
     }
   },
 
-  completeOnboarding: (userId) => {
-    try {
-      const stmt = db.prepare('UPDATE users SET has_completed_onboarding = 1 WHERE id = ?');
-      stmt.run(userId);
-    } catch (err) {
-      throw err;
-    }
-  },
-
-  hasCompletedOnboarding: (userId) => {
-    try {
-      const row = db.prepare('SELECT has_completed_onboarding FROM users WHERE id = ?').get(userId);
-      return row?.has_completed_onboarding === 1;
-    } catch (err) {
-      throw err;
-    }
-  }
 };
 
 // API Keys database operations

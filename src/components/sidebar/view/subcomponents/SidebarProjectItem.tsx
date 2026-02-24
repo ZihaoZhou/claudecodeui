@@ -2,10 +2,8 @@ import { Button } from '../../../ui/button';
 import { Check, ChevronDown, ChevronRight, Edit3, Folder, FolderOpen, Star, Trash2, X } from 'lucide-react';
 import type { TFunction } from 'i18next';
 import { cn } from '../../../../lib/utils';
-import TaskIndicator from '../../../TaskIndicator';
 import type { Project, ProjectSession, SessionProvider } from '../../../../types/app';
-import type { MCPServerStatus, SessionWithProvider, TouchHandlerFactory } from '../../types/types';
-import { getTaskIndicatorStatus } from '../../utils/utils';
+import type { SessionWithProvider, TouchHandlerFactory } from '../../types/types';
 import SidebarProjectSessions from './SidebarProjectSessions';
 
 type SidebarProjectItemProps = {
@@ -23,8 +21,6 @@ type SidebarProjectItemProps = {
   currentTime: Date;
   editingSession: string | null;
   editingSessionName: string;
-  tasksEnabled: boolean;
-  mcpServerStatus: MCPServerStatus;
   onEditingNameChange: (name: string) => void;
   onToggleProject: (projectName: string) => void;
   onProjectSelect: (project: Project) => void;
@@ -74,8 +70,6 @@ export default function SidebarProjectItem({
   currentTime,
   editingSession,
   editingSessionName,
-  tasksEnabled,
-  mcpServerStatus,
   onEditingNameChange,
   onToggleProject,
   onProjectSelect,
@@ -100,7 +94,6 @@ export default function SidebarProjectItem({
   const hasMoreSessions = project.sessionMeta?.hasMore === true;
   const sessionCountDisplay = getSessionCountDisplay(sessions, hasMoreSessions);
   const sessionCountLabel = `${sessionCountDisplay} session${sessions.length === 1 ? '' : 's'}`;
-  const taskStatus = getTaskIndicatorStatus(project, mcpServerStatus);
 
   const toggleProject = () => onToggleProject(project.name);
   const toggleStarProject = () => onToggleStarProject(project.name);
@@ -176,13 +169,6 @@ export default function SidebarProjectItem({
                     <>
                       <div className="flex items-center justify-between min-w-0 flex-1">
                         <h3 className="text-sm font-medium text-foreground truncate">{project.displayName}</h3>
-                        {tasksEnabled && (
-                          <TaskIndicator
-                            status={taskStatus}
-                            size="xs"
-                            className="hidden md:inline-flex flex-shrink-0 ml-2"
-                          />
-                        )}
                       </div>
                       <p className="text-xs text-muted-foreground">{sessionCountLabel}</p>
                     </>

@@ -112,17 +112,15 @@ export default function SidebarSessionItem({
               </div>
             </div>
 
-            {!sessionView.isCursorSession && (
-              <button
-                className="w-5 h-5 rounded-md bg-red-50 dark:bg-red-900/20 flex items-center justify-center active:scale-95 transition-transform opacity-70 ml-1"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  requestDeleteSession();
-                }}
-              >
-                <Trash2 className="w-2.5 h-2.5 text-red-600 dark:text-red-400" />
-              </button>
-            )}
+            <button
+              className="w-5 h-5 rounded-md bg-red-50 dark:bg-red-900/20 flex items-center justify-center active:scale-95 transition-transform opacity-70 ml-1"
+              onClick={(event) => {
+                event.stopPropagation();
+                requestDeleteSession();
+              }}
+            >
+              <Trash2 className="w-2.5 h-2.5 text-red-600 dark:text-red-400" />
+            </button>
           </div>
         </div>
       </div>
@@ -161,75 +159,71 @@ export default function SidebarSessionItem({
           </div>
         </Button>
 
-        {!sessionView.isCursorSession && (
-          <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200">
-            {editingSession === session.id && !sessionView.isCodexSession ? (
-              <>
-                <input
-                  type="text"
-                  value={editingSessionName}
-                  onChange={(event) => onEditingSessionNameChange(event.target.value)}
-                  onKeyDown={(event) => {
-                    event.stopPropagation();
-                    if (event.key === 'Enter') {
-                      saveEditedSession();
-                    } else if (event.key === 'Escape') {
-                      onCancelEditingSession();
-                    }
-                  }}
-                  onClick={(event) => event.stopPropagation()}
-                  className="w-32 px-2 py-1 text-xs border border-border rounded bg-background focus:outline-none focus:ring-1 focus:ring-primary"
-                  autoFocus
-                />
-                <button
-                  className="w-6 h-6 bg-green-50 hover:bg-green-100 dark:bg-green-900/20 dark:hover:bg-green-900/40 rounded flex items-center justify-center"
-                  onClick={(event) => {
-                    event.stopPropagation();
+        <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200">
+          {editingSession === session.id ? (
+            <>
+              <input
+                type="text"
+                value={editingSessionName}
+                onChange={(event) => onEditingSessionNameChange(event.target.value)}
+                onKeyDown={(event) => {
+                  event.stopPropagation();
+                  if (event.key === 'Enter') {
                     saveEditedSession();
-                  }}
-                  title={t('tooltips.save')}
-                >
-                  <Check className="w-3 h-3 text-green-600 dark:text-green-400" />
-                </button>
-                <button
-                  className="w-6 h-6 bg-gray-50 hover:bg-gray-100 dark:bg-gray-900/20 dark:hover:bg-gray-900/40 rounded flex items-center justify-center"
-                  onClick={(event) => {
-                    event.stopPropagation();
+                  } else if (event.key === 'Escape') {
                     onCancelEditingSession();
-                  }}
-                  title={t('tooltips.cancel')}
-                >
-                  <X className="w-3 h-3 text-gray-600 dark:text-gray-400" />
-                </button>
-              </>
-            ) : (
-              <>
-                {!sessionView.isCodexSession && (
-                  <button
-                    className="w-6 h-6 bg-gray-50 hover:bg-gray-100 dark:bg-gray-900/20 dark:hover:bg-gray-900/40 rounded flex items-center justify-center"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onStartEditingSession(session.id, session.summary || t('projects.newSession'));
-                    }}
-                    title={t('tooltips.editSessionName')}
-                  >
-                    <Edit2 className="w-3 h-3 text-gray-600 dark:text-gray-400" />
-                  </button>
-                )}
-                <button
-                  className="w-6 h-6 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 rounded flex items-center justify-center"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    requestDeleteSession();
-                  }}
-                  title={t('tooltips.deleteSession')}
-                >
-                  <Trash2 className="w-3 h-3 text-red-600 dark:text-red-400" />
-                </button>
-              </>
-            )}
-          </div>
-        )}
+                  }
+                }}
+                onClick={(event) => event.stopPropagation()}
+                className="w-32 px-2 py-1 text-xs border border-border rounded bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+                autoFocus
+              />
+              <button
+                className="w-6 h-6 bg-green-50 hover:bg-green-100 dark:bg-green-900/20 dark:hover:bg-green-900/40 rounded flex items-center justify-center"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  saveEditedSession();
+                }}
+                title={t('tooltips.save')}
+              >
+                <Check className="w-3 h-3 text-green-600 dark:text-green-400" />
+              </button>
+              <button
+                className="w-6 h-6 bg-gray-50 hover:bg-gray-100 dark:bg-gray-900/20 dark:hover:bg-gray-900/40 rounded flex items-center justify-center"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onCancelEditingSession();
+                }}
+                title={t('tooltips.cancel')}
+              >
+                <X className="w-3 h-3 text-gray-600 dark:text-gray-400" />
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                className="w-6 h-6 bg-gray-50 hover:bg-gray-100 dark:bg-gray-900/20 dark:hover:bg-gray-900/40 rounded flex items-center justify-center"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onStartEditingSession(session.id, session.summary || t('projects.newSession'));
+                }}
+                title={t('tooltips.editSessionName')}
+              >
+                <Edit2 className="w-3 h-3 text-gray-600 dark:text-gray-400" />
+              </button>
+              <button
+                className="w-6 h-6 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 rounded flex items-center justify-center"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  requestDeleteSession();
+                }}
+                title={t('tooltips.deleteSession')}
+              >
+                <Trash2 className="w-3 h-3 text-red-600 dark:text-red-400" />
+              </button>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -8,9 +8,7 @@
     "user": "U",
     "error": "오류",
     "tool": "도구",
-    "claude": "Claude",
-    "cursor": "Cursor",
-    "codex": "Codex"
+    "claude": "Claude"
   },
   "tools": {
     "settings": "도구 설정",
@@ -77,22 +75,6 @@
   "usageLimit": {
     "resetAt": "Claude 사용량 한도에 도달했습니다. 한도는 **{{time}} {{timezone}}** - {{date}}에 초기화됩니다"
   },
-  "codex": {
-    "permissionMode": "권한 모드",
-    "modes": {
-      "default": "기본 모드",
-      "acceptEdits": "편집 허용",
-      "bypassPermissions": "권한 우회",
-      "plan": "Plan 모드"
-    },
-    "descriptions": {
-      "default": "신뢰할 수 있는 명령어(ls, cat, grep, git status 등)만 자동 실행됩니다. 다른 명령어는 건너뜁니다. 워크스페이스에 쓰기 가능.",
-      "acceptEdits": "워크스페이스 내에서 모든 명령어가 자동 실행됩니다. 샌드박스 내 완전 자동 모드.",
-      "bypassPermissions": "제한 없는 전체 시스템 접근. 모든 명령어가 전체 디스크 및 네트워크 접근 권한으로 자동 실행됩니다. 주의해서 사용하세요.",
-      "plan": "계획 모드 - 명령어가 실행되지 않습니다"
-    },
-    "technicalDetails": "기술 상세"
-  },
   "input": {
     "placeholder": "/를 입력하여 명령어, @를 입력하여 파일, 또는 {{provider}}에게 무엇이든 물어보세요...",
     "placeholderDefault": "메시지를 입력하세요...",
@@ -151,15 +133,10 @@
     "description": "새 대화를 시작할 프로바이더를 선택하세요",
     "selectModel": "모델 선택",
     "providerInfo": {
-      "anthropic": "by Anthropic",
-      "openai": "by OpenAI",
-      "cursorEditor": "AI 코드 에디터"
+      "anthropic": "by Anthropic"
     },
     "readyPrompt": {
-      "claude": "{{model}}로 Claude를 사용할 준비가 되었습니다. 아래에 메시지를 입력하세요.",
-      "cursor": "{{model}}로 Cursor를 사용할 준비가 되었습니다. 아래에 메시지를 입력하세요.",
-      "codex": "{{model}}로 Codex를 사용할 준비가 되었습니다. 아래에 메시지를 입력하세요.",
-      "default": "시작하려면 위에서 프로바이더를 선택하세요"
+      "claude": "{{model}}로 Claude를 사용할 준비가 되었습니다. 아래에 메시지를 입력하세요."
     }
   },
   "session": {
@@ -210,8 +187,5 @@
   },
   "projectSelection": {
     "startChatWithProvider": "{{provider}}와 채팅을 시작하려면 프로젝트를 선택하세요"
-  },
-  "tasks": {
-    "nextTaskPrompt": "다음 작업 시작"
   }
 }

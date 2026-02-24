@@ -51,11 +51,6 @@ function fallbackCopyToClipboard(text) {
   return copied;
 }
 
-const CODEX_DEVICE_AUTH_URL = 'https://auth.openai.com/codex/device';
-
-function isCodexLoginCommand(command) {
-  return typeof command === 'string' && /\bcodex\s+login\b/i.test(command);
-}
 
 function Shell({ selectedProject, selectedSession, initialCommand, isPlainShell = false, onProcessComplete, minimal = false, autoConnect = false }) {
   const { t } = useTranslation('chat');
@@ -261,9 +256,7 @@ function Shell({ selectedProject, selectedSession, initialCommand, isPlainShell 
 
   const sessionDisplayName = useMemo(() => {
     if (!selectedSession) return null;
-    return selectedSession.__provider === 'cursor'
-      ? (selectedSession.name || 'Untitled Session')
-      : (selectedSession.summary || 'New Session');
+    return (selectedSession.summary || 'New Session');
   }, [selectedSession]);
 
   const sessionDisplayNameShort = useMemo(() => {
@@ -382,9 +375,7 @@ function Shell({ selectedProject, selectedSession, initialCommand, isPlainShell 
     terminal.current.open(terminalRef.current);
 
     terminal.current.attachCustomKeyEventHandler((event) => {
-      const activeAuthUrl = isCodexLoginCommand(initialCommandRef.current)
-        ? CODEX_DEVICE_AUTH_URL
-        : authUrlRef.current;
+      const activeAuthUrl = authUrlRef.current;
 
       if (
         event.type === 'keydown' &&
@@ -514,9 +505,7 @@ function Shell({ selectedProject, selectedSession, initialCommand, isPlainShell 
   }
 
   if (minimal) {
-    const displayAuthUrl = isCodexLoginCommand(initialCommand)
-      ? CODEX_DEVICE_AUTH_URL
-      : authUrl;
+    const displayAuthUrl = authUrl;
     const hasAuthUrl = Boolean(displayAuthUrl);
     const showMobileAuthPanel = hasAuthUrl && !isAuthPanelHidden;
     const showMobileAuthPanelToggle = hasAuthUrl && isAuthPanelHidden;

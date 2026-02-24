@@ -42,18 +42,11 @@ export type SidebarProps = {
 };
 
 export type SessionViewModel = {
-  isCursorSession: boolean;
-  isCodexSession: boolean;
   isActive: boolean;
   sessionName: string;
   sessionTime: string;
   messageCount: number;
 };
-
-export type MCPServerStatus = {
-  hasMCPServer?: boolean;
-  isConfigured?: boolean;
-} | null;
 
 export type TouchHandlerFactory = (
   callback: () => void,

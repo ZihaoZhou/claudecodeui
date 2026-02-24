@@ -17,35 +17,6 @@ export interface EditingFile {
   [key: string]: unknown;
 }
 
-export interface TaskMasterTask {
-  id: string | number;
-  title?: string;
-  description?: string;
-  status?: string;
-  priority?: string;
-  details?: string;
-  testStrategy?: string;
-  parentId?: string | number;
-  dependencies?: Array<string | number>;
-  subtasks?: TaskMasterTask[];
-  [key: string]: unknown;
-}
-
-export interface TaskReference {
-  id: string | number;
-  title?: string;
-  [key: string]: unknown;
-}
-
-export type TaskSelection = TaskMasterTask | TaskReference;
-
-export interface PrdFile {
-  name: string;
-  content?: string;
-  isExisting?: boolean;
-  [key: string]: unknown;
-}
-
 export interface MainContentProps {
   selectedProject: Project | null;
   selectedSession: ProjectSession | null;
@@ -74,7 +45,6 @@ export interface MainContentHeaderProps {
   setActiveTab: Dispatch<SetStateAction<AppTab>>;
   selectedProject: Project;
   selectedSession: ProjectSession | null;
-  shouldShowTasksTab: boolean;
   isMobile: boolean;
   onMenuClick: () => void;
 }
@@ -103,6 +73,3 @@ export interface EditorSidebarProps {
   fillSpace?: boolean;
 }
 
-export interface TaskMasterPanelProps {
-  isVisible: boolean;
-}

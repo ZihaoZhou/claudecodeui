@@ -1,10 +1,7 @@
-import type { SessionProvider } from '../types/app';
 import ClaudeLogo from './ClaudeLogo';
-import CodexLogo from './CodexLogo';
-import CursorLogo from './CursorLogo';
 
 type SessionProviderLogoProps = {
-  provider?: SessionProvider | string | null;
+  provider?: string | null;
   className?: string;
 };
 
@@ -12,13 +9,5 @@ export default function SessionProviderLogo({
   provider = 'claude',
   className = 'w-5 h-5',
 }: SessionProviderLogoProps) {
-  if (provider === 'cursor') {
-    return <CursorLogo className={className} />;
-  }
-
-  if (provider === 'codex') {
-    return <CodexLogo className={className} />;
-  }
-
   return <ClaudeLogo className={className} />;
 }

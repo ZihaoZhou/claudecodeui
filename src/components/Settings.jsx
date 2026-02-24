@@ -1,13 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { Badge } from './ui/badge';
-import { X, Plus, Settings as SettingsIcon, Shield, AlertTriangle, Moon, Sun, Server, Edit3, Trash2, Globe, Terminal, Zap, FolderOpen, LogIn, Key, GitBranch, Check } from 'lucide-react';
+import { X, Settings as SettingsIcon, Moon, Sun, Server, Globe, Terminal, Zap, FolderOpen, Key, GitBranch } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useTranslation } from 'react-i18next';
 import CredentialsSettings from './CredentialsSettings';
 import GitSettings from './GitSettings';
-import TasksSettings from './TasksSettings';
 import LoginModal from './LoginModal';
 import { authenticatedFetch } from '../utils/api';
 
@@ -55,7 +53,7 @@ function Settings({ isOpen, onClose, projects = [], initialTab = 'agents' }) {
   const [mcpToolsLoading, setMcpToolsLoading] = useState({});
   const [activeTab, setActiveTab] = useState(initialTab);
   const [jsonValidationError, setJsonValidationError] = useState('');
-  const [selectedAgent, setSelectedAgent] = useState('claude'); // 'claude', 'cursor', or 'codex'
+  const [selectedAgent, setSelectedAgent] = useState('claude');
   const [selectedCategory, setSelectedCategory] = useState('account'); // 'account', 'permissions', or 'mcp'
 
   // Code Editor settings
@@ -75,47 +73,11 @@ function Settings({ isOpen, onClose, projects = [], initialTab = 'agents' }) {
     localStorage.getItem('codeEditorFontSize') || '14'
   );
   
-  // Cursor-specific states
-  const [cursorAllowedCommands, setCursorAllowedCommands] = useState([]);
-  const [cursorDisallowedCommands, setCursorDisallowedCommands] = useState([]);
-  const [cursorSkipPermissions, setCursorSkipPermissions] = useState(false);
-  const [newCursorCommand, setNewCursorCommand] = useState('');
-  const [newCursorDisallowedCommand, setNewCursorDisallowedCommand] = useState('');
-  const [cursorMcpServers, setCursorMcpServers] = useState([]);
-
-  // Codex-specific states
-  const [codexMcpServers, setCodexMcpServers] = useState([]);
-  const [codexPermissionMode, setCodexPermissionMode] = useState('default');
-  const [showCodexMcpForm, setShowCodexMcpForm] = useState(false);
-  const [codexMcpFormData, setCodexMcpFormData] = useState({
-    name: '',
-    type: 'stdio',
-    config: {
-      command: '',
-      args: [],
-      env: {}
-    }
-  });
-  const [editingCodexMcpServer, setEditingCodexMcpServer] = useState(null);
-  const [codexMcpLoading, setCodexMcpLoading] = useState(false);
-
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [loginProvider, setLoginProvider] = useState('');
   const [selectedProject, setSelectedProject] = useState(null);
 
   const [claudeAuthStatus, setClaudeAuthStatus] = useState({
-    authenticated: false,
-    email: null,
-    loading: true,
-    error: null
-  });
-  const [cursorAuthStatus, setCursorAuthStatus] = useState({
-    authenticated: false,
-    email: null,
-    loading: true,
-    error: null
-  });
-  const [codexAuthStatus, setCodexAuthStatus] = useState({
     authenticated: false,
     email: null,
     loading: true,
@@ -140,73 +102,6 @@ function Settings({ isOpen, onClose, projects = [], initialTab = 'agents' }) {
     'WebSearch'
   ];
   
-  // Common shell commands for Cursor
-  const commonCursorCommands = [
-    'Shell(ls)',
-    'Shell(mkdir)',
-    'Shell(cd)',
-    'Shell(cat)',
-    'Shell(echo)',
-    'Shell(git status)',
-    'Shell(git diff)',
-    'Shell(git log)',
-    'Shell(npm install)',
-    'Shell(npm run)',
-    'Shell(python)',
-    'Shell(node)'
-  ];
-
-  // Fetch Cursor MCP servers
-  const fetchCursorMcpServers = async () => {
-    try {
-      const response = await authenticatedFetch('/api/cursor/mcp');
-
-      if (response.ok) {
-        const data = await response.json();
-        setCursorMcpServers(data.servers || []);
-      } else {
-        console.error('Failed to fetch Cursor MCP servers');
-      }
-    } catch (error) {
-      console.error('Error fetching Cursor MCP servers:', error);
-    }
-  };
-
-  const fetchCodexMcpServers = async () => {
-    try {
-      const configResponse = await authenticatedFetch('/api/codex/mcp/config/read');
-
-      if (configResponse.ok) {
-        const configData = await configResponse.json();
-        if (configData.success && configData.servers) {
-          setCodexMcpServers(configData.servers);
-          return;
-        }
-      }
-
-      const cliResponse = await authenticatedFetch('/api/codex/mcp/cli/list');
-
-      if (cliResponse.ok) {
-        const cliData = await cliResponse.json();
-        if (cliData.success && cliData.servers) {
-          const servers = cliData.servers.map(server => ({
-            id: server.name,
-            name: server.name,
-            type: server.type || 'stdio',
-            scope: 'user',
-            config: {
-              command: server.command || '',
-              args: server.args || [],
-              env: server.env || {}
-            }
-          }));
-          setCodexMcpServers(servers);
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching Codex MCP servers:', error);
-    }
-  };
 
   // MCP API functions
   const fetchMcpServers = async () => {
@@ -369,134 +264,10 @@ function Settings({ isOpen, onClose, projects = [], initialTab = 'agents' }) {
     }
   };
 
-  const saveCodexMcpServer = async (serverData) => {
-    try {
-      if (editingCodexMcpServer) {
-        await deleteCodexMcpServer(editingCodexMcpServer.id);
-      }
-
-      const response = await authenticatedFetch('/api/codex/mcp/cli/add', {
-        method: 'POST',
-        body: JSON.stringify({
-          name: serverData.name,
-          command: serverData.config?.command,
-          args: serverData.config?.args || [],
-          env: serverData.config?.env || {}
-        })
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success) {
-          await fetchCodexMcpServers();
-          return true;
-        } else {
-          throw new Error(result.error || 'Failed to save Codex MCP server');
-        }
-      } else {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to save server');
-      }
-    } catch (error) {
-      console.error('Error saving Codex MCP server:', error);
-      throw error;
-    }
-  };
-
-  const deleteCodexMcpServer = async (serverId) => {
-    try {
-      const response = await authenticatedFetch(`/api/codex/mcp/cli/remove/${serverId}`, {
-        method: 'DELETE'
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success) {
-          await fetchCodexMcpServers();
-          return true;
-        } else {
-          throw new Error(result.error || 'Failed to delete Codex MCP server');
-        }
-      } else {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to delete server');
-      }
-    } catch (error) {
-      console.error('Error deleting Codex MCP server:', error);
-      throw error;
-    }
-  };
-
-  const resetCodexMcpForm = () => {
-    setCodexMcpFormData({
-      name: '',
-      type: 'stdio',
-      config: {
-        command: '',
-        args: [],
-        env: {}
-      }
-    });
-    setEditingCodexMcpServer(null);
-    setShowCodexMcpForm(false);
-  };
-
-  const openCodexMcpForm = (server = null) => {
-    if (server) {
-      setEditingCodexMcpServer(server);
-      setCodexMcpFormData({
-        name: server.name,
-        type: server.type || 'stdio',
-        config: {
-          command: server.config?.command || '',
-          args: server.config?.args || [],
-          env: server.config?.env || {}
-        }
-      });
-    } else {
-      resetCodexMcpForm();
-    }
-    setShowCodexMcpForm(true);
-  };
-
-  const handleCodexMcpSubmit = async (e) => {
-    e.preventDefault();
-    setCodexMcpLoading(true);
-
-    try {
-      if (editingCodexMcpServer) {
-        // Delete old server first, then add new one
-        await deleteCodexMcpServer(editingCodexMcpServer.name);
-      }
-      await saveCodexMcpServer(codexMcpFormData);
-      resetCodexMcpForm();
-      setSaveStatus('success');
-    } catch (error) {
-      alert(`Error: ${error.message}`);
-      setSaveStatus('error');
-    } finally {
-      setCodexMcpLoading(false);
-    }
-  };
-
-  const handleCodexMcpDelete = async (serverName) => {
-    if (confirm('Are you sure you want to delete this MCP server?')) {
-      try {
-        await deleteCodexMcpServer(serverName);
-        setSaveStatus('success');
-      } catch (error) {
-        alert(`Error: ${error.message}`);
-        setSaveStatus('error');
-      }
-    }
-  };
-
   useEffect(() => {
     if (isOpen) {
       loadSettings();
       checkClaudeAuthStatus();
-      checkCursorAuthStatus();
-      checkCodexAuthStatus();
       setActiveTab(initialTab);
     }
   }, [isOpen, initialTab]);
@@ -547,39 +318,8 @@ function Settings({ isOpen, onClose, projects = [], initialTab = 'agents' }) {
         setProjectSortOrder('name');
       }
       
-      // Load Cursor settings from localStorage
-      const savedCursorSettings = localStorage.getItem('cursor-tools-settings');
-
-      if (savedCursorSettings) {
-        const cursorSettings = JSON.parse(savedCursorSettings);
-        setCursorAllowedCommands(cursorSettings.allowedCommands || []);
-        setCursorDisallowedCommands(cursorSettings.disallowedCommands || []);
-        setCursorSkipPermissions(cursorSettings.skipPermissions || false);
-      } else {
-        // Set Cursor defaults
-        setCursorAllowedCommands([]);
-        setCursorDisallowedCommands([]);
-        setCursorSkipPermissions(false);
-      }
-
-      // Load Codex settings from localStorage
-      const savedCodexSettings = localStorage.getItem('codex-settings');
-
-      if (savedCodexSettings) {
-        const codexSettings = JSON.parse(savedCodexSettings);
-        setCodexPermissionMode(codexSettings.permissionMode || 'default');
-      } else {
-        setCodexPermissionMode('default');
-      }
-
       // Load MCP servers from API
       await fetchMcpServers();
-
-      // Load Cursor MCP servers
-      await fetchCursorMcpServers();
-
-      // Load Codex MCP servers
-      await fetchCodexMcpServers();
     } catch (error) {
       console.error('Error loading tool settings:', error);
       setAllowedTools([]);
@@ -620,82 +360,8 @@ function Settings({ isOpen, onClose, projects = [], initialTab = 'agents' }) {
     }
   };
 
-  const checkCursorAuthStatus = async () => {
-    try {
-      const response = await authenticatedFetch('/api/cli/cursor/status');
-
-      if (response.ok) {
-        const data = await response.json();
-        setCursorAuthStatus({
-          authenticated: data.authenticated,
-          email: data.email,
-          loading: false,
-          error: data.error || null
-        });
-      } else {
-        setCursorAuthStatus({
-          authenticated: false,
-          email: null,
-          loading: false,
-          error: 'Failed to check authentication status'
-        });
-      }
-    } catch (error) {
-      console.error('Error checking Cursor auth status:', error);
-      setCursorAuthStatus({
-        authenticated: false,
-        email: null,
-        loading: false,
-        error: error.message
-      });
-    }
-  };
-
-  const checkCodexAuthStatus = async () => {
-    try {
-      const response = await authenticatedFetch('/api/cli/codex/status');
-
-      if (response.ok) {
-        const data = await response.json();
-        setCodexAuthStatus({
-          authenticated: data.authenticated,
-          email: data.email,
-          loading: false,
-          error: data.error || null
-        });
-      } else {
-        setCodexAuthStatus({
-          authenticated: false,
-          email: null,
-          loading: false,
-          error: 'Failed to check authentication status'
-        });
-      }
-    } catch (error) {
-      console.error('Error checking Codex auth status:', error);
-      setCodexAuthStatus({
-        authenticated: false,
-        email: null,
-        loading: false,
-        error: error.message
-      });
-    }
-  };
-
   const handleClaudeLogin = () => {
     setLoginProvider('claude');
-    setSelectedProject(projects?.[0] || { name: 'default', fullPath: process.cwd() });
-    setShowLoginModal(true);
-  };
-
-  const handleCursorLogin = () => {
-    setLoginProvider('cursor');
-    setSelectedProject(projects?.[0] || { name: 'default', fullPath: process.cwd() });
-    setShowLoginModal(true);
-  };
-
-  const handleCodexLogin = () => {
-    setLoginProvider('codex');
     setSelectedProject(projects?.[0] || { name: 'default', fullPath: process.cwd() });
     setShowLoginModal(true);
   };
@@ -703,14 +369,7 @@ function Settings({ isOpen, onClose, projects = [], initialTab = 'agents' }) {
   const handleLoginComplete = (exitCode) => {
     if (exitCode === 0) {
       setSaveStatus('success');
-
-      if (loginProvider === 'claude') {
-        checkClaudeAuthStatus();
-      } else if (loginProvider === 'cursor') {
-        checkCursorAuthStatus();
-      } else if (loginProvider === 'codex') {
-        checkCodexAuthStatus();
-      }
+      checkClaudeAuthStatus();
     }
   };
 
@@ -728,24 +387,8 @@ function Settings({ isOpen, onClose, projects = [], initialTab = 'agents' }) {
         lastUpdated: new Date().toISOString()
       };
       
-      // Save Cursor settings
-      const cursorSettings = {
-        allowedCommands: cursorAllowedCommands,
-        disallowedCommands: cursorDisallowedCommands,
-        skipPermissions: cursorSkipPermissions,
-        lastUpdated: new Date().toISOString()
-      };
-
-      // Save Codex settings
-      const codexSettings = {
-        permissionMode: codexPermissionMode,
-        lastUpdated: new Date().toISOString()
-      };
-
       // Save to localStorage
       localStorage.setItem('claude-settings', JSON.stringify(claudeSettings));
-      localStorage.setItem('cursor-tools-settings', JSON.stringify(cursorSettings));
-      localStorage.setItem('codex-settings', JSON.stringify(codexSettings));
 
       setSaveStatus('success');
       
@@ -1006,16 +649,6 @@ function Settings({ isOpen, onClose, projects = [], initialTab = 'agents' }) {
                 <Key className="w-4 h-4 inline mr-2" />
                 {t('mainTabs.apiTokens')}
               </button>
-              <button
-                onClick={() => setActiveTab('tasks')}
-                className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === 'tasks'
-                    ? 'border-blue-600 text-blue-600 dark:text-blue-400'
-                    : 'border-transparent text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                {t('mainTabs.tasks')}
-              </button>
             </div>
           </div>
 
@@ -1264,20 +897,6 @@ function Settings({ isOpen, onClose, projects = [], initialTab = 'agents' }) {
                       onClick={() => setSelectedAgent('claude')}
                       isMobile={true}
                     />
-                    <AgentListItem
-                      agentId="cursor"
-                      authStatus={cursorAuthStatus}
-                      isSelected={selectedAgent === 'cursor'}
-                      onClick={() => setSelectedAgent('cursor')}
-                      isMobile={true}
-                    />
-                    <AgentListItem
-                      agentId="codex"
-                      authStatus={codexAuthStatus}
-                      isSelected={selectedAgent === 'codex'}
-                      onClick={() => setSelectedAgent('codex')}
-                      isMobile={true}
-                    />
                   </div>
                 </div>
 
@@ -1289,18 +908,6 @@ function Settings({ isOpen, onClose, projects = [], initialTab = 'agents' }) {
                       authStatus={claudeAuthStatus}
                       isSelected={selectedAgent === 'claude'}
                       onClick={() => setSelectedAgent('claude')}
-                    />
-                    <AgentListItem
-                      agentId="cursor"
-                      authStatus={cursorAuthStatus}
-                      isSelected={selectedAgent === 'cursor'}
-                      onClick={() => setSelectedAgent('cursor')}
-                    />
-                    <AgentListItem
-                      agentId="codex"
-                      authStatus={codexAuthStatus}
-                      isSelected={selectedAgent === 'codex'}
-                      onClick={() => setSelectedAgent('codex')}
                     />
                   </div>
                 </div>
@@ -1348,22 +955,14 @@ function Settings({ isOpen, onClose, projects = [], initialTab = 'agents' }) {
                     {/* Account Category */}
                     {selectedCategory === 'account' && (
                       <AccountContent
-                        agent={selectedAgent}
-                        authStatus={
-                          selectedAgent === 'claude' ? claudeAuthStatus :
-                          selectedAgent === 'cursor' ? cursorAuthStatus :
-                          codexAuthStatus
-                        }
-                        onLogin={
-                          selectedAgent === 'claude' ? handleClaudeLogin :
-                          selectedAgent === 'cursor' ? handleCursorLogin :
-                          handleCodexLogin
-                        }
+                        agent="claude"
+                        authStatus={claudeAuthStatus}
+                        onLogin={handleClaudeLogin}
                       />
                     )}
 
                     {/* Permissions Category */}
-                    {selectedCategory === 'permissions' && selectedAgent === 'claude' && (
+                    {selectedCategory === 'permissions' && (
                       <PermissionsContent
                         agent="claude"
                         skipPermissions={skipPermissions}
@@ -1379,32 +978,8 @@ function Settings({ isOpen, onClose, projects = [], initialTab = 'agents' }) {
                       />
                     )}
 
-                    {selectedCategory === 'permissions' && selectedAgent === 'cursor' && (
-                      <PermissionsContent
-                        agent="cursor"
-                        skipPermissions={cursorSkipPermissions}
-                        setSkipPermissions={setCursorSkipPermissions}
-                        allowedCommands={cursorAllowedCommands}
-                        setAllowedCommands={setCursorAllowedCommands}
-                        disallowedCommands={cursorDisallowedCommands}
-                        setDisallowedCommands={setCursorDisallowedCommands}
-                        newAllowedCommand={newCursorCommand}
-                        setNewAllowedCommand={setNewCursorCommand}
-                        newDisallowedCommand={newCursorDisallowedCommand}
-                        setNewDisallowedCommand={setNewCursorDisallowedCommand}
-                      />
-                    )}
-
-                    {selectedCategory === 'permissions' && selectedAgent === 'codex' && (
-                      <PermissionsContent
-                        agent="codex"
-                        permissionMode={codexPermissionMode}
-                        setPermissionMode={setCodexPermissionMode}
-                      />
-                    )}
-
                     {/* MCP Servers Category */}
-                    {selectedCategory === 'mcp' && selectedAgent === 'claude' && (
+                    {selectedCategory === 'mcp' && (
                       <McpServersContent
                         agent="claude"
                         servers={mcpServers}
@@ -1416,26 +991,6 @@ function Settings({ isOpen, onClose, projects = [], initialTab = 'agents' }) {
                         testResults={mcpTestResults}
                         serverTools={mcpServerTools}
                         toolsLoading={mcpToolsLoading}
-                      />
-                    )}
-
-                    {selectedCategory === 'mcp' && selectedAgent === 'cursor' && (
-                      <McpServersContent
-                        agent="cursor"
-                        servers={cursorMcpServers}
-                        onAdd={() => {/* TODO: Add cursor MCP form */}}
-                        onEdit={(server) => {/* TODO: Edit cursor MCP form */}}
-                        onDelete={(serverId) => {/* TODO: Delete cursor MCP */}}
-                      />
-                    )}
-
-                    {selectedCategory === 'mcp' && selectedAgent === 'codex' && (
-                      <McpServersContent
-                        agent="codex"
-                        servers={codexMcpServers}
-                        onAdd={() => openCodexMcpForm()}
-                        onEdit={(server) => openCodexMcpForm(server)}
-                        onDelete={(serverId) => handleCodexMcpDelete(serverId)}
                       />
                     )}
                   </div>
@@ -1794,112 +1349,6 @@ function Settings({ isOpen, onClose, projects = [], initialTab = 'agents' }) {
               </div>
             )}
 
-            {/* Codex MCP Server Form Modal */}
-            {showCodexMcpForm && (
-              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[110] p-4">
-                <div className="bg-background border border-border rounded-lg w-full max-w-lg max-h-[90vh] overflow-y-auto">
-                  <div className="flex items-center justify-between p-4 border-b border-border">
-                    <h3 className="text-lg font-medium text-foreground">
-                      {editingCodexMcpServer ? t('mcpForm.title.edit') : t('mcpForm.title.add')}
-                    </h3>
-                    <Button variant="ghost" size="sm" onClick={resetCodexMcpForm}>
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </div>
-
-                  <form onSubmit={handleCodexMcpSubmit} className="p-4 space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-foreground mb-2">
-                        {t('mcpForm.fields.serverName')} *
-                      </label>
-                      <Input
-                        value={codexMcpFormData.name}
-                        onChange={(e) => setCodexMcpFormData(prev => ({...prev, name: e.target.value}))}
-                        placeholder={t('mcpForm.placeholders.serverName')}
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-foreground mb-2">
-                        {t('mcpForm.fields.command')} *
-                      </label>
-                      <Input
-                        value={codexMcpFormData.config?.command || ''}
-                        onChange={(e) => setCodexMcpFormData(prev => ({
-                          ...prev,
-                          config: { ...prev.config, command: e.target.value }
-                        }))}
-                        placeholder="npx @my-org/mcp-server"
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-foreground mb-2">
-                        {t('mcpForm.fields.arguments')}
-                      </label>
-                      <textarea
-                        value={(codexMcpFormData.config?.args || []).join('\n')}
-                        onChange={(e) => setCodexMcpFormData(prev => ({
-                          ...prev,
-                          config: { ...prev.config, args: e.target.value.split('\n').filter(a => a.trim()) }
-                        }))}
-                        placeholder="--port&#10;3000"
-                        rows={3}
-                        className="w-full px-3 py-2 text-sm bg-background border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-foreground mb-2">
-                        {t('mcpForm.fields.envVars')}
-                      </label>
-                      <textarea
-                        value={Object.entries(codexMcpFormData.config?.env || {}).map(([k, v]) => `${k}=${v}`).join('\n')}
-                        onChange={(e) => {
-                          const env = {};
-                          e.target.value.split('\n').forEach(line => {
-                            const [key, ...valueParts] = line.split('=');
-                            if (key && valueParts.length > 0) {
-                              env[key.trim()] = valueParts.join('=').trim();
-                            }
-                          });
-                          setCodexMcpFormData(prev => ({
-                            ...prev,
-                            config: { ...prev.config, env }
-                          }));
-                        }}
-                        placeholder="API_KEY=xxx&#10;DEBUG=true"
-                        rows={3}
-                        className="w-full px-3 py-2 text-sm bg-background border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
-                      />
-                    </div>
-
-                    <div className="flex justify-end gap-2 pt-4 border-t border-border">
-                      <Button type="button" variant="outline" onClick={resetCodexMcpForm}>
-                        {t('mcpForm.actions.cancel')}
-                      </Button>
-                      <Button
-                        type="submit"
-                        disabled={codexMcpLoading || !codexMcpFormData.name || !codexMcpFormData.config?.command}
-                        className="bg-green-600 hover:bg-green-700 text-white"
-                      >
-                        {codexMcpLoading ? t('mcpForm.actions.saving') : (editingCodexMcpServer ? t('mcpForm.actions.updateServer') : t('mcpForm.actions.addServer'))}
-                      </Button>
-                    </div>
-                  </form>
-                </div>
-              </div>
-            )}
-
-            {/* Tasks Tab */}
-            {activeTab === 'tasks' && (
-              <div className="space-y-6 md:space-y-8">
-                <TasksSettings />
-              </div>
-            )}
-
             {/* API & Tokens Tab */}
             {activeTab === 'api' && (
               <div className="space-y-6 md:space-y-8">
@@ -1963,12 +1412,7 @@ function Settings({ isOpen, onClose, projects = [], initialTab = 'agents' }) {
         provider={loginProvider}
         project={selectedProject}
         onComplete={handleLoginComplete}
-        isAuthenticated={
-          loginProvider === 'claude' ? claudeAuthStatus.authenticated :
-          loginProvider === 'cursor' ? cursorAuthStatus.authenticated :
-          loginProvider === 'codex' ? codexAuthStatus.authenticated :
-          false
-        }
+        isAuthenticated={claudeAuthStatus.authenticated}
       />
     </div>
   );

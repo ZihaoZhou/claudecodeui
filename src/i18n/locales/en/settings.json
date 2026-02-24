@@ -246,31 +246,12 @@
     "apiDocsLink": "API Documentation",
     "documentation": {
       "title": "External API Documentation",
-      "description": "Learn how to use the external API to trigger Claude/Cursor sessions from your applications.",
+      "description": "Learn how to use the external API to trigger Claude sessions from your applications.",
       "viewLink": "View API Documentation →"
     },
     "loading": "Loading...",
     "version": {
       "updateAvailable": "Update available: v{{version}}"
-    }
-  },
-  "tasks": {
-    "checking": "Checking TaskMaster installation...",
-    "notInstalled": {
-      "title": "TaskMaster AI CLI Not Installed",
-      "description": "TaskMaster CLI is required to use task management features. Install it to get started:",
-      "installCommand": "npm install -g task-master-ai",
-      "viewOnGitHub": "View on GitHub",
-      "afterInstallation": "After installation:",
-      "steps": {
-        "restart": "Restart this application",
-        "autoAvailable": "TaskMaster features will automatically become available",
-        "initCommand": "Use task-master init in your project directory"
-      }
-    },
-    "settings": {
-      "enableLabel": "Enable TaskMaster Integration",
-      "enableDescription": "Show TaskMaster tasks, banners, and sidebar indicators across the interface"
     }
   },
   "agents": {
@@ -286,12 +267,6 @@
     "account": {
       "claude": {
         "description": "Anthropic Claude AI assistant"
-      },
-      "cursor": {
-        "description": "Cursor AI-powered code editor"
-      },
-      "codex": {
-        "description": "OpenAI Codex AI assistant"
       }
     },
     "connectionStatus": "Connection Status",
@@ -309,8 +284,7 @@
     "title": "Permission Settings",
     "skipPermissions": {
       "label": "Skip permission prompts (use with caution)",
-      "claudeDescription": "Equivalent to --dangerously-skip-permissions flag",
-      "cursorDescription": "Equivalent to -f flag in Cursor CLI"
+      "claudeDescription": "Equivalent to --dangerously-skip-permissions flag"
     },
     "allowedTools": {
       "title": "Allowed Tools",
@@ -352,31 +326,6 @@
       "npmInstall": "- Allow npm install",
       "rmRf": "- Block recursive delete"
     },
-    "codex": {
-      "permissionMode": "Permission Mode",
-      "description": "Controls how Codex handles file modifications and command execution",
-      "modes": {
-        "default": {
-          "title": "Default",
-          "description": "Only trusted commands (ls, cat, grep, git status, etc.) run automatically. Other commands are skipped. Can write to workspace."
-        },
-        "acceptEdits": {
-          "title": "Accept Edits",
-          "description": "All commands run automatically within the workspace. Full auto mode with sandboxed execution."
-        },
-        "bypassPermissions": {
-          "title": "Bypass Permissions",
-          "description": "Full system access with no restrictions. All commands run automatically with full disk and network access. Use with caution."
-        }
-      },
-      "technicalDetails": "Technical details",
-      "technicalInfo": {
-        "default": "sandboxMode=workspace-write, approvalPolicy=untrusted. Trusted commands: cat, cd, grep, head, ls, pwd, tail, git status/log/diff/show, find (without -exec), etc.",
-        "acceptEdits": "sandboxMode=workspace-write, approvalPolicy=never. All commands auto-execute within project directory.",
-        "bypassPermissions": "sandboxMode=danger-full-access, approvalPolicy=never. Full system access, use only in trusted environments.",
-        "overrideNote": "You can override this per-session using the mode button in the chat interface."
-      }
-    },
     "actions": {
       "add": "Add"
     }
@@ -384,9 +333,7 @@
   "mcpServers": {
     "title": "MCP Servers",
     "description": {
-      "claude": "Model Context Protocol servers provide additional tools and data sources to Claude",
-      "cursor": "Model Context Protocol servers provide additional tools and data sources to Cursor",
-      "codex": "Model Context Protocol servers provide additional tools and data sources to Codex"
+      "claude": "Model Context Protocol servers provide additional tools and data sources to Claude"
     },
     "addButton": "Add MCP Server",
     "empty": "No MCP servers configured",
@@ -411,8 +358,8 @@
       "delete": "Delete server"
     },
     "help": {
-      "title": "About Codex MCP",
-      "description": "Codex supports stdio-based MCP servers. You can add servers that extend Codex's capabilities with additional tools and resources."
+      "title": "About MCP",
+      "description": "Claude supports stdio-based MCP servers. You can add servers that extend Claude's capabilities with additional tools and resources."
     }
   }
 }

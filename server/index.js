@@ -1,6 +1,12 @@
 #!/usr/bin/env node
 // Load environment variables before other imports execute
 import './load-env.js';
+
+// Remove CLAUDECODE env var immediately — if set by a parent Claude Code process,
+// child claude processes detect it and immediately exit with code 1.
+// This must happen before any module spawns a subprocess (SDK query, pty.spawn, etc.).
+delete process.env.CLAUDECODE;
+
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -46,13 +52,9 @@ import mime from 'mime-types';
 
 import { getProjects, getSessions, getSessionMessages, renameProject, deleteSession, deleteProject, addProjectManually, extractProjectDirectory, clearProjectDirectoryCache } from './projects.js';
 import { queryClaudeSDK, abortClaudeSDKSession, isClaudeSDKSessionActive, getActiveClaudeSDKSessions, resolveToolApproval } from './claude-sdk.js';
-import { spawnCursor, abortCursorSession, isCursorSessionActive, getActiveCursorSessions } from './cursor-cli.js';
-import { queryCodex, abortCodexSession, isCodexSessionActive, getActiveCodexSessions } from './openai-codex.js';
 import gitRoutes from './routes/git.js';
 import authRoutes from './routes/auth.js';
 import mcpRoutes from './routes/mcp.js';
-import cursorRoutes from './routes/cursor.js';
-import taskmasterRoutes from './routes/taskmaster.js';
 import mcpUtilsRoutes from './routes/mcp-utils.js';
 import commandsRoutes from './routes/commands.js';
 import settingsRoutes from './routes/settings.js';
@@ -60,7 +62,6 @@ import agentRoutes from './routes/agent.js';
 import projectsRoutes, { WORKSPACES_ROOT, validateWorkspacePath } from './routes/projects.js';
 import cliAuthRoutes from './routes/cli-auth.js';
 import userRoutes from './routes/user.js';
-import codexRoutes from './routes/codex.js';
 import { initializeDatabase } from './database/db.js';
 import { validateApiKey, authenticateToken, authenticateWebSocket } from './middleware/auth.js';
 import { IS_PLATFORM } from './constants/config.js';
@@ -68,19 +69,8 @@ import { IS_PLATFORM } from './constants/config.js';
 // File system watchers for provider project/session folders
 const PROVIDER_WATCH_PATHS = [
     { provider: 'claude', rootPath: path.join(os.homedir(), '.claude', 'projects') },
-    { provider: 'cursor', rootPath: path.join(os.homedir(), '.cursor', 'chats') },
-    { provider: 'codex', rootPath: path.join(os.homedir(), '.codex', 'sessions') }
 ];
-const WATCHER_IGNORED_PATTERNS = [
-    '**/node_modules/**',
-    '**/.git/**',
-    '**/dist/**',
-    '**/build/**',
-    '**/*.tmp',
-    '**/*.swp',
-    '**/.DS_Store'
-];
-const WATCHER_DEBOUNCE_MS = 300;
+const WATCHER_DEBOUNCE_MS = 500;
 let projectsWatchers = [];
 let projectsWatcherDebounceTimer = null;
 const connectedClients = new Set();
@@ -99,53 +89,46 @@ function broadcastProgress(progress) {
     });
 }
 
-// Setup file system watchers for Claude, Cursor, and Codex project/session folders
+// Setup file system watchers for Claude project/session folders.
+// Uses native fs.watch with recursive:true which on macOS uses FSEvents
+// (1 FD for the entire tree) instead of chokidar (1 FD per file).
 async function setupProjectsWatcher() {
-    const chokidar = (await import('chokidar')).default;
+    // Close existing watchers
+    for (const watcher of projectsWatchers) {
+        try { watcher.close(); } catch {}
+    }
+    projectsWatchers = [];
 
     if (projectsWatcherDebounceTimer) {
         clearTimeout(projectsWatcherDebounceTimer);
         projectsWatcherDebounceTimer = null;
     }
 
-    await Promise.all(
-        projectsWatchers.map(async (watcher) => {
-            try {
-                await watcher.close();
-            } catch (error) {
-                console.error('[WARN] Failed to close watcher:', error);
-            }
-        })
-    );
-    projectsWatchers = [];
+    const debouncedUpdate = (provider, rootPath, filename) => {
+        // Only care about .jsonl file changes (sessions) and directory changes
+        if (filename && !filename.endsWith('.jsonl') && filename.includes('.')) {
+            return; // Ignore non-jsonl file changes (images, etc.)
+        }
 
-    const debouncedUpdate = (eventType, filePath, provider, rootPath) => {
         if (projectsWatcherDebounceTimer) {
             clearTimeout(projectsWatcherDebounceTimer);
         }
 
         projectsWatcherDebounceTimer = setTimeout(async () => {
-            // Prevent reentrant calls
-            if (isGetProjectsRunning) {
-                return;
-            }
+            if (isGetProjectsRunning) return;
 
             try {
                 isGetProjectsRunning = true;
-
-                // Clear project directory cache when files change
                 clearProjectDirectoryCache();
 
-                // Get updated projects list
                 const updatedProjects = await getProjects(broadcastProgress);
 
-                // Notify all connected clients about the project changes
                 const updateMessage = JSON.stringify({
                     type: 'projects_updated',
                     projects: updatedProjects,
                     timestamp: new Date().toISOString(),
-                    changeType: eventType,
-                    changedFile: path.relative(rootPath, filePath),
+                    changeType: 'change',
+                    changedFile: filename || '',
                     watchProvider: provider
                 });
 
@@ -154,7 +137,6 @@ async function setupProjectsWatcher() {
                         client.send(updateMessage);
                     }
                 });
-
             } catch (error) {
                 console.error('[ERROR] Error handling project changes:', error);
             } finally {
@@ -165,35 +147,16 @@ async function setupProjectsWatcher() {
 
     for (const { provider, rootPath } of PROVIDER_WATCH_PATHS) {
         try {
-            // chokidar v4 emits ENOENT via the "error" event for missing roots and will not auto-recover.
-            // Ensure provider folders exist before creating the watcher so watching stays active.
             await fsPromises.mkdir(rootPath, { recursive: true });
 
-            // Initialize chokidar watcher with optimized settings
-            const watcher = chokidar.watch(rootPath, {
-                ignored: WATCHER_IGNORED_PATTERNS,
-                persistent: true,
-                ignoreInitial: true, // Don't fire events for existing files on startup
-                followSymlinks: false,
-                depth: 10, // Reasonable depth limit
-                awaitWriteFinish: {
-                    stabilityThreshold: 100, // Wait 100ms for file to stabilize
-                    pollInterval: 50
-                }
+            // fs.watch with recursive:true uses FSEvents on macOS — 1 FD for entire tree
+            const watcher = fs.watch(rootPath, { recursive: true }, (eventType, filename) => {
+                debouncedUpdate(provider, rootPath, filename);
             });
 
-            // Set up event listeners
-            watcher
-                .on('add', (filePath) => debouncedUpdate('add', filePath, provider, rootPath))
-                .on('change', (filePath) => debouncedUpdate('change', filePath, provider, rootPath))
-                .on('unlink', (filePath) => debouncedUpdate('unlink', filePath, provider, rootPath))
-                .on('addDir', (dirPath) => debouncedUpdate('addDir', dirPath, provider, rootPath))
-                .on('unlinkDir', (dirPath) => debouncedUpdate('unlinkDir', dirPath, provider, rootPath))
-                .on('error', (error) => {
-                    console.error(`[ERROR] ${provider} watcher error:`, error);
-                })
-                .on('ready', () => {
-                });
+            watcher.on('error', (error) => {
+                console.error(`[ERROR] ${provider} watcher error:`, error);
+            });
 
             projectsWatchers.push(watcher);
         } catch (error) {
@@ -355,11 +318,6 @@ app.use('/api/git', authenticateToken, gitRoutes);
 // MCP API Routes (protected)
 app.use('/api/mcp', authenticateToken, mcpRoutes);
 
-// Cursor API Routes (protected)
-app.use('/api/cursor', authenticateToken, cursorRoutes);
-
-// TaskMaster API Routes (protected)
-app.use('/api/taskmaster', authenticateToken, taskmasterRoutes);
 
 // MCP utilities
 app.use('/api/mcp-utils', authenticateToken, mcpUtilsRoutes);
@@ -375,9 +333,6 @@ app.use('/api/cli', authenticateToken, cliAuthRoutes);
 
 // User API Routes (protected)
 app.use('/api/user', authenticateToken, userRoutes);
-
-// Codex API Routes (protected)
-app.use('/api/codex', authenticateToken, codexRoutes);
 
 // Agent API Routes (uses API key authentication)
 app.use('/api/agent', agentRoutes);
@@ -418,7 +373,9 @@ app.post('/api/system/update', authenticateToken, async (req, res) => {
             ? 'git checkout main && git pull && npm install'
             : 'npm install -g @siteboon/claude-code-ui@latest';
 
-        const child = spawn('sh', ['-c', updateCommand], {
+        const shellCmd = os.platform() === 'win32' ? 'cmd.exe' : 'sh';
+        const shellArgs = os.platform() === 'win32' ? ['/c', updateCommand] : ['-c', updateCommand];
+        const child = spawn(shellCmd, shellArgs, {
             cwd: installMode === 'git' ? projectRoot : os.homedir(),
             env: process.env
         });
@@ -942,44 +899,13 @@ function handleChatConnection(ws) {
 
                 // Use Claude Agents SDK
                 await queryClaudeSDK(data.command, data.options, writer);
-            } else if (data.type === 'cursor-command') {
-                console.log('[DEBUG] Cursor message:', data.command || '[Continue/Resume]');
-                console.log('📁 Project:', data.options?.cwd || 'Unknown');
-                console.log('🔄 Session:', data.options?.sessionId ? 'Resume' : 'New');
-                console.log('🤖 Model:', data.options?.model || 'default');
-                await spawnCursor(data.command, data.options, writer);
-            } else if (data.type === 'codex-command') {
-                console.log('[DEBUG] Codex message:', data.command || '[Continue/Resume]');
-                console.log('📁 Project:', data.options?.projectPath || data.options?.cwd || 'Unknown');
-                console.log('🔄 Session:', data.options?.sessionId ? 'Resume' : 'New');
-                console.log('🤖 Model:', data.options?.model || 'default');
-                await queryCodex(data.command, data.options, writer);
-            } else if (data.type === 'cursor-resume') {
-                // Backward compatibility: treat as cursor-command with resume and no prompt
-                console.log('[DEBUG] Cursor resume session (compat):', data.sessionId);
-                await spawnCursor('', {
-                    sessionId: data.sessionId,
-                    resume: true,
-                    cwd: data.options?.cwd
-                }, writer);
             } else if (data.type === 'abort-session') {
                 console.log('[DEBUG] Abort session request:', data.sessionId);
-                const provider = data.provider || 'claude';
-                let success;
-
-                if (provider === 'cursor') {
-                    success = abortCursorSession(data.sessionId);
-                } else if (provider === 'codex') {
-                    success = abortCodexSession(data.sessionId);
-                } else {
-                    // Use Claude Agents SDK
-                    success = await abortClaudeSDKSession(data.sessionId);
-                }
-
+                const success = await abortClaudeSDKSession(data.sessionId);
                 writer.send({
                     type: 'session-aborted',
                     sessionId: data.sessionId,
-                    provider,
+                    provider: 'claude',
                     success
                 });
             } else if (data.type === 'claude-permission-response') {
@@ -994,42 +920,20 @@ function handleChatConnection(ws) {
                         rememberEntry: data.rememberEntry
                     });
                 }
-            } else if (data.type === 'cursor-abort') {
-                console.log('[DEBUG] Abort Cursor session:', data.sessionId);
-                const success = abortCursorSession(data.sessionId);
-                writer.send({
-                    type: 'session-aborted',
-                    sessionId: data.sessionId,
-                    provider: 'cursor',
-                    success
-                });
             } else if (data.type === 'check-session-status') {
                 // Check if a specific session is currently processing
-                const provider = data.provider || 'claude';
                 const sessionId = data.sessionId;
-                let isActive;
-
-                if (provider === 'cursor') {
-                    isActive = isCursorSessionActive(sessionId);
-                } else if (provider === 'codex') {
-                    isActive = isCodexSessionActive(sessionId);
-                } else {
-                    // Use Claude Agents SDK
-                    isActive = isClaudeSDKSessionActive(sessionId);
-                }
-
+                const isActive = isClaudeSDKSessionActive(sessionId);
                 writer.send({
                     type: 'session-status',
                     sessionId,
-                    provider,
+                    provider: 'claude',
                     isProcessing: isActive
                 });
             } else if (data.type === 'get-active-sessions') {
                 // Get all currently active sessions
                 const activeSessions = {
-                    claude: getActiveClaudeSDKSessions(),
-                    cursor: getActiveCursorSessions(),
-                    codex: getActiveCodexSessions()
+                    claude: getActiveClaudeSDKSessions()
                 };
                 writer.send({
                     type: 'active-sessions',
@@ -1075,10 +979,9 @@ function handleShellConnection(ws) {
                 urlDetectionBuffer = '';
                 announcedAuthUrls.clear();
 
-                // Login commands (Claude/Cursor auth) should never reuse cached sessions
+                // Login commands should never reuse cached sessions
                 const isLoginCommand = initialCommand && (
                     initialCommand.includes('setup-token') ||
-                    initialCommand.includes('cursor-agent login') ||
                     initialCommand.includes('auth login')
                 );
 
@@ -1138,7 +1041,7 @@ function handleShellConnection(ws) {
                 if (isPlainShell) {
                     welcomeMsg = `\x1b[36mStarting terminal in: ${projectPath}\x1b[0m\r\n`;
                 } else {
-                    const providerName = provider === 'cursor' ? 'Cursor' : provider === 'codex' ? 'Codex' : 'Claude';
+                    const providerName = 'Claude';
                     welcomeMsg = hasSession ?
                         `\x1b[36mResuming ${providerName} session ${sessionId} in: ${projectPath}\x1b[0m\r\n` :
                         `\x1b[36mStarting new ${providerName} session in: ${projectPath}\x1b[0m\r\n`;
@@ -1158,38 +1061,6 @@ function handleShellConnection(ws) {
                             shellCommand = `Set-Location -Path "${projectPath}"; ${initialCommand}`;
                         } else {
                             shellCommand = `cd "${projectPath}" && ${initialCommand}`;
-                        }
-                    } else if (provider === 'cursor') {
-                        // Use cursor-agent command
-                        if (os.platform() === 'win32') {
-                            if (hasSession && sessionId) {
-                                shellCommand = `Set-Location -Path "${projectPath}"; cursor-agent --resume="${sessionId}"`;
-                            } else {
-                                shellCommand = `Set-Location -Path "${projectPath}"; cursor-agent`;
-                            }
-                        } else {
-                            if (hasSession && sessionId) {
-                                shellCommand = `cd "${projectPath}" && cursor-agent --resume="${sessionId}"`;
-                            } else {
-                                shellCommand = `cd "${projectPath}" && cursor-agent`;
-                            }
-                        }
-                    } else if (provider === 'codex') {
-                        // Use codex command
-                        if (os.platform() === 'win32') {
-                            if (hasSession && sessionId) {
-                                // Try to resume session, but with fallback to a new session if it fails
-                                shellCommand = `Set-Location -Path "${projectPath}"; codex resume "${sessionId}"; if ($LASTEXITCODE -ne 0) { codex }`;
-                            } else {
-                                shellCommand = `Set-Location -Path "${projectPath}"; codex`;
-                            }
-                        } else {
-                            if (hasSession && sessionId) {
-                                // Try to resume session, but with fallback to a new session if it fails
-                                shellCommand = `cd "${projectPath}" && codex resume "${sessionId}" || codex`;
-                            } else {
-                                shellCommand = `cd "${projectPath}" && codex`;
-                            }
                         }
                     } else {
                         // Use claude command (default) or initialCommand if provided
@@ -1213,8 +1084,8 @@ function handleShellConnection(ws) {
                     console.log('🔧 Executing shell command:', shellCommand);
 
                     // Use appropriate shell based on platform
-                    const shell = os.platform() === 'win32' ? 'powershell.exe' : 'bash';
-                    const shellArgs = os.platform() === 'win32' ? ['-Command', shellCommand] : ['-c', shellCommand];
+                    const shell = os.platform() === 'win32' ? 'powershell.exe' : (process.env.SHELL || '/bin/bash');
+                    const shellArgs = os.platform() === 'win32' ? ['-Command', shellCommand] : ['-lc', shellCommand];
 
                     // Use terminal dimensions from client if provided, otherwise use defaults
                     const termCols = data.cols || 80;
@@ -1635,89 +1506,7 @@ app.get('/api/projects/:projectName/sessions/:sessionId/token-usage', authentica
       return res.status(400).json({ error: 'Invalid sessionId' });
     }
 
-    // Handle Cursor sessions - they use SQLite and don't have token usage info
-    if (provider === 'cursor') {
-      return res.json({
-        used: 0,
-        total: 0,
-        breakdown: { input: 0, cacheCreation: 0, cacheRead: 0 },
-        unsupported: true,
-        message: 'Token usage tracking not available for Cursor sessions'
-      });
-    }
-
-    // Handle Codex sessions
-    if (provider === 'codex') {
-      const codexSessionsDir = path.join(homeDir, '.codex', 'sessions');
-
-      // Find the session file by searching for the session ID
-      const findSessionFile = async (dir) => {
-        try {
-          const entries = await fsPromises.readdir(dir, { withFileTypes: true });
-          for (const entry of entries) {
-            const fullPath = path.join(dir, entry.name);
-            if (entry.isDirectory()) {
-              const found = await findSessionFile(fullPath);
-              if (found) return found;
-            } else if (entry.name.includes(safeSessionId) && entry.name.endsWith('.jsonl')) {
-              return fullPath;
-            }
-          }
-        } catch (error) {
-          // Skip directories we can't read
-        }
-        return null;
-      };
-
-      const sessionFilePath = await findSessionFile(codexSessionsDir);
-
-      if (!sessionFilePath) {
-        return res.status(404).json({ error: 'Codex session file not found', sessionId: safeSessionId });
-      }
-
-      // Read and parse the Codex JSONL file
-      let fileContent;
-      try {
-        fileContent = await fsPromises.readFile(sessionFilePath, 'utf8');
-      } catch (error) {
-        if (error.code === 'ENOENT') {
-          return res.status(404).json({ error: 'Session file not found', path: sessionFilePath });
-        }
-        throw error;
-      }
-      const lines = fileContent.trim().split('\n');
-      let totalTokens = 0;
-      let contextWindow = 200000; // Default for Codex/OpenAI
-
-      // Find the latest token_count event with info (scan from end)
-      for (let i = lines.length - 1; i >= 0; i--) {
-        try {
-          const entry = JSON.parse(lines[i]);
-
-          // Codex stores token info in event_msg with type: "token_count"
-          if (entry.type === 'event_msg' && entry.payload?.type === 'token_count' && entry.payload?.info) {
-            const tokenInfo = entry.payload.info;
-            if (tokenInfo.total_token_usage) {
-              totalTokens = tokenInfo.total_token_usage.total_tokens || 0;
-            }
-            if (tokenInfo.model_context_window) {
-              contextWindow = tokenInfo.model_context_window;
-            }
-            break; // Stop after finding the latest token count
-          }
-        } catch (parseError) {
-          // Skip lines that can't be parsed
-          continue;
-        }
-      }
-
-      return res.json({
-        used: totalTokens,
-        total: contextWindow
-      });
-    }
-
-    // Handle Claude sessions (default)
+    // Handle Claude sessions
     // Extract actual project path
     let projectPath;
     try {

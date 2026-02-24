@@ -6,14 +6,6 @@ const agentConfig = {
     name: 'Claude',
     color: 'blue',
   },
-  cursor: {
-    name: 'Cursor',
-    color: 'purple',
-  },
-  codex: {
-    name: 'Codex',
-    color: 'gray',
-  },
 };
 
 const colorClasses = {
@@ -22,18 +14,6 @@ const colorClasses = {
     borderBottom: 'border-b-blue-500',
     bg: 'bg-blue-50 dark:bg-blue-900/20',
     dot: 'bg-blue-500',
-  },
-  purple: {
-    border: 'border-l-purple-500 md:border-l-purple-500',
-    borderBottom: 'border-b-purple-500',
-    bg: 'bg-purple-50 dark:bg-purple-900/20',
-    dot: 'bg-purple-500',
-  },
-  gray: {
-    border: 'border-l-gray-700 dark:border-l-gray-300',
-    borderBottom: 'border-b-gray-700 dark:border-b-gray-300',
-    bg: 'bg-gray-100 dark:bg-gray-800/50',
-    dot: 'bg-gray-700 dark:bg-gray-300',
   },
 };
 
